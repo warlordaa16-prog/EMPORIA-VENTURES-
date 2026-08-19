@@ -1,0 +1,191 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { ShoppingBag, Plus, Search, Edit3, Trash2, Tag } from 'lucide-react';
+import { Product, ShopSettings } from '../types';
+import { productService } from '../services/productService';
+import { formatCurrency } from '../utils/currency';
+
+interface ProductsProps {
+  settings: ShopSettings;
+  onOpenProductModal: (product?: Product) => void;
+  refreshTrigger: number;
+}
+
+export const Products: React.FC<ProductsProps> = ({
+  settings,
+  onOpenProductModal,
+  refreshTrigger
+}) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+
+  useEffect(() => {
+    loadProducts();
+  }, [refreshTrigger]);
+
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const list = await productService.getAll();
+      setProducts(list);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach(p => {
+      if (p.category) set.add(p.category);
+    });
+    return Array.from(set);
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      if (selectedCategory !== 'ALL' && p.category !== selectedCategory) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesName = p.name.toLowerCase().includes(q);
+        const matchesCategory = (p.category || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesCategory) return false;
+      }
+      return true;
+    });
+  }, [products, selectedCategory, searchQuery]);
+
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Are you sure you want to remove product "${name}"?`)) return;
+    try {
+      await productService.delete(id);
+      loadProducts();
+    } catch (err: any) {
+      alert('Failed to delete product: ' + err.message);
+    }
+  };
+
+  return (
+    <div className="space-y-5 animate-in fade-in duration-200">
+      {/* Header Bento Tile */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
+              <ShoppingBag className="w-5 h-5" />
+            </div>
+            Products & Item Catalog
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Preconfigure shop items and default prices to accelerate counter checkout.
+          </p>
+        </div>
+
+        <button
+          id="add-product-btn"
+          onClick={() => onOpenProductModal()}
+          className="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-[#173B6C] to-[#2F6DB2] hover:opacity-95 rounded-xl shadow-sm shadow-[#173B6C]/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" /> + Add Product Item
+        </button>
+      </div>
+
+      {/* Filter & Search Bento Bar */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="w-full sm:w-80 relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search items by name or category..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 bg-slate-50/50 text-slate-800 focus:border-[#173B6C] focus:bg-white focus:ring-1 focus:ring-[#173B6C] outline-hidden"
+          />
+        </div>
+
+        {categories.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+            <button
+              onClick={() => setSelectedCategory('ALL')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                selectedCategory === 'ALL'
+                  ? 'bg-[#173B6C] text-white shadow-2xs'
+                  : 'bg-slate-100/90 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All Items ({products.length})
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                  selectedCategory === cat
+                    ? 'bg-purple-900 text-white shadow-2xs'
+                    : 'bg-purple-50 text-purple-800 hover:bg-purple-100'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Product Items Bento Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {filteredProducts.length === 0 ? (
+          <div className="col-span-full bg-white p-14 text-center rounded-3xl border border-slate-200/80 text-slate-400 text-xs">
+            No products found. Tap "+ Add Product Item" to create one.
+          </div>
+        ) : (
+          filteredProducts.map(prod => (
+            <div
+              key={prod.id}
+              className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-all space-y-3 relative group"
+            >
+              <div className="flex items-start justify-between">
+                <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider border border-slate-200/60">
+                  {prod.category || 'General'}
+                </span>
+
+                <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => onOpenProductModal(prod)}
+                    className="p-1.5 text-slate-400 hover:text-[#173B6C] hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
+                    title="Edit Item"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  {settings.activeRole === 'owner' && prod.id && (
+                    <button
+                      onClick={() => handleDelete(prod.id!, prod.name)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Item"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-black text-sm text-slate-900 line-clamp-1">{prod.name}</h3>
+                <span className="text-xs text-slate-400 font-medium">Unit: per {prod.unit}</span>
+              </div>
+
+              <div className="pt-2.5 border-t border-slate-100 flex items-baseline justify-between">
+                <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Default Price</span>
+                <span className="text-base font-black text-slate-900">
+                  {formatCurrency(prod.defaultPrice, settings.currency)}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};

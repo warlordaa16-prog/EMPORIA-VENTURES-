@@ -1,0 +1,6 @@
+{
+  "name": "ShopPay",
+  "description": "Offline-First Shop Sales & Payment Management System with automatic credit tracking, digital cashbook, and local IndexedDB storage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
