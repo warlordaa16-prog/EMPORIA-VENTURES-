@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, Download, Upload, RefreshCw, Trash2, Shield, Smartphone, HardDrive, Database, Check, Store } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Download, Upload, RefreshCw, Trash2, Shield, Smartphone, HardDrive, Database, Check, Store, Sparkles } from 'lucide-react';
 import { ShopSettings, UserRole } from '../types';
 import { db } from '../db/database';
 import { backupService } from '../services/backupService';
@@ -19,6 +19,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [formData, setFormData] = useState<ShopSettings>({ ...settings });
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showcaseLoading, setShowcaseLoading] = useState(false);
   const [storageStats, setStorageStats] = useState({
     customers: 0,
     sales: 0,
@@ -101,12 +102,28 @@ export const Settings: React.FC<SettingsProps> = ({
     reader.readAsText(file);
   };
 
+  const handleLoadShowcaseData = async () => {
+    if (!confirm('Populate the store with rich showcase sample data (products, sales, debtors & transactions)?')) return;
+    setShowcaseLoading(true);
+    try {
+      await backupService.loadShowcaseData();
+      const newSettings = await settingsService.getSettings();
+      onSettingsUpdated(newSettings);
+      await loadStorageCounts();
+      alert('🎉 Showcase demo data loaded successfully! Check the Homepage & Reports.');
+    } catch (err: any) {
+      alert('Failed to load showcase data: ' + err.message);
+    } finally {
+      setShowcaseLoading(false);
+    }
+  };
+
   const handleResetDemoData = async () => {
     if (!confirm('Reset current database to the default sample demo data?')) return;
     await backupService.resetToDemoData();
     const newSettings = await settingsService.getSettings();
     onSettingsUpdated(newSettings);
-    loadStorageCounts();
+    await loadStorageCounts();
     alert('✅ Reset to demo store data completed.');
   };
 
@@ -115,7 +132,7 @@ export const Settings: React.FC<SettingsProps> = ({
       return;
     }
     await backupService.clearAllData();
-    loadStorageCounts();
+    await loadStorageCounts();
     alert('Cleared all transaction data.');
   };
 
@@ -312,6 +329,32 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
       </div>
 
+      {/* Showcase Data Quick Loader Bento Card */}
+      <div className="bg-gradient-to-br from-emerald-50/70 via-white to-sky-50/60 p-6 rounded-3xl border border-emerald-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-600" /> Showcase Sample Data
+          </h2>
+          <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+            Ready to Demo
+          </span>
+        </div>
+        <p className="text-xs text-slate-600">
+          Populate the store with realistic retail demo data (Groceries, Dairy, Beverages, Customer Accounts, Cash/Mobile Money Invoices, and Partial Debt Records) to showcase all ledger and profit calculation features.
+        </p>
+        <div className="pt-1">
+          <button
+            type="button"
+            disabled={showcaseLoading}
+            onClick={handleLoadShowcaseData}
+            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:opacity-95 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            <Sparkles className="w-4 h-4 stroke-[2.5]" />
+            {showcaseLoading ? 'Loading Sample Records...' : 'Load Complete Showcase Data'}
+          </button>
+        </div>
+      </div>
+
       {/* Backup & Restore Bento Card */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-4">
         <h2 className="text-sm font-black text-slate-900 flex items-center gap-2 pb-3.5 border-b border-slate-100">
@@ -352,23 +395,21 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
 
         {/* Danger zone / resets */}
-        {formData.activeRole === 'owner' && (
-          <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-            <button
-              onClick={handleResetDemoData}
-              className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Reset to Demo Store
-            </button>
+        <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <button
+            onClick={handleResetDemoData}
+            className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Reset to Demo Store
+          </button>
 
-            <button
-              onClick={handleClearAll}
-              className="px-3.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Clear All Data
-            </button>
-          </div>
-        )}
+          <button
+            onClick={handleClearAll}
+            className="px-3.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Clear All Data
+          </button>
+        </div>
       </div>
     </div>
   );

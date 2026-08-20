@@ -2,7 +2,7 @@ import { backupRepository } from '../repositories/backupRepository';
 import { salesRepository } from '../repositories/salesRepository';
 import { paymentRepository } from '../repositories/paymentRepository';
 import { customerRepository } from '../repositories/customerRepository';
-import { initializeDatabase } from '../db/database';
+import { initializeDatabase, populateShowcaseData } from '../db/database';
 import { BackupData } from '../types';
 import { downloadCSV, downloadJSON } from '../utils/export';
 
@@ -96,12 +96,18 @@ export const backupService = {
     downloadCSV(headers, rows, `shoppay-customers-${dateStr}.csv`);
   },
 
+  async loadShowcaseData() {
+    await populateShowcaseData(true);
+  },
+
   async resetToDemoData() {
     await backupRepository.wipeDatabase();
     await initializeDatabase();
+    await populateShowcaseData(true);
   },
 
   async clearAllData() {
     await backupRepository.wipeDatabase();
   }
 };
+
