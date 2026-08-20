@@ -178,8 +178,26 @@ export const Customers: React.FC<CustomersProps> = ({
       {/* Customer Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredCustomers.length === 0 ? (
-          <div className="col-span-full bg-white p-14 text-center rounded-3xl border border-slate-200/80 text-slate-400 text-xs">
-            No customers found matching the search criteria.
+          <div className="col-span-full bg-white p-12 text-center rounded-3xl border border-slate-200/80 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-sky-50 text-[#173B6C] flex items-center justify-center mx-auto">
+              <Users className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-slate-800">No Customers in Directory</h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                {searchQuery || filterType !== 'all' 
+                  ? 'No customers match your current search or filter criteria.' 
+                  : 'Your customer credit ledger is clean. Add customers to track sales, credit lines, and payments.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenNewCustomer}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#173B6C] hover:bg-[#1E4D8C] text-white text-xs font-bold rounded-xl shadow-2xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Add Customer</span>
+            </button>
           </div>
         ) : (
           filteredCustomers.map(cust => {

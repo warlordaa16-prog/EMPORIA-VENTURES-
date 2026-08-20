@@ -51,37 +51,4 @@ export const SEED_PRODUCTS: Omit<Product, 'id'>[] = [
   { name: 'Fresh Farm Eggs (Tray of 30)', unit: 'tray', defaultPrice: 15000, category: 'Poultry', stockQuantity: 7, lowStockThreshold: 10, trackStock: true, sku: 'EV-PL-001', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
 ];
 
-export const SEED_CUSTOMERS: Omit<Customer, 'id'>[] = [
-  {
-    name: 'John Doe',
-    phone: '+256 701 987 654',
-    address: 'Block 4, Flat 12',
-    notes: 'Regular customer, pays end of month',
-    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 5 * 86400000).toISOString()
-  },
-  {
-    name: 'Mary Namubiru',
-    phone: '+256 782 456 789',
-    address: 'Market Street, Shop 8',
-    notes: 'Neighboring salon owner',
-    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 3 * 86400000).toISOString()
-  },
-  {
-    name: 'David Otim',
-    phone: '+256 753 112 233',
-    address: 'Near Taxi Park',
-    notes: 'Prefers Mobile Money',
-    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 86400000).toISOString()
-  },
-  {
-    name: 'Grace Akello',
-    phone: '+256 774 990 011',
-    address: 'Church Road',
-    notes: 'Always pays in cash',
-    createdAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 86400000).toISOString()
-  }
-];
+export const SEED_CUSTOMERS: Omit<Customer, 'id'>[] = [];

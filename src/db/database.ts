@@ -109,11 +109,14 @@ export async function initializeDatabase() {
       }
     }
 
-    // 4. Customers Initialization
-    const customersCount = await db.customers.count();
-    if (customersCount === 0) {
-      for (const cust of SEED_CUSTOMERS) {
-        await db.customers.add(cust as Customer);
+    // 4. Customers: Remove any previous sample/mock seed customer feed so the merchant starts with a clean ledger
+    const seedCustomerNames = ['John Doe', 'Mary Namubiru', 'David Otim', 'Grace Akello'];
+    const currentCustomers = await db.customers.toArray();
+    for (const cust of currentCustomers) {
+      if (seedCustomerNames.includes(cust.name)) {
+        if (cust.id) {
+          await db.customers.delete(cust.id);
+        }
       }
     }
 
