@@ -97,14 +97,19 @@ export async function initializeDatabase() {
     } else {
       const existingProducts = await db.products.toArray();
       for (const prod of existingProducts) {
+        const seedMatch = SEED_PRODUCTS.find(sp => sp.name.toLowerCase() === prod.name.toLowerCase());
+        const updates: Partial<Product> = {};
         if (prod.stockQuantity === undefined || prod.lowStockThreshold === undefined) {
-          const seedMatch = SEED_PRODUCTS.find(sp => sp.name.toLowerCase() === prod.name.toLowerCase());
-          await db.products.update(prod.id!, {
-            stockQuantity: prod.stockQuantity ?? seedMatch?.stockQuantity ?? 20,
-            lowStockThreshold: prod.lowStockThreshold ?? seedMatch?.lowStockThreshold ?? 5,
-            trackStock: prod.trackStock ?? true,
-            sku: prod.sku ?? seedMatch?.sku ?? `EV-${prod.id}`
-          });
+          updates.stockQuantity = prod.stockQuantity ?? seedMatch?.stockQuantity ?? 20;
+          updates.lowStockThreshold = prod.lowStockThreshold ?? seedMatch?.lowStockThreshold ?? 5;
+          updates.trackStock = prod.trackStock ?? true;
+          updates.sku = prod.sku ?? seedMatch?.sku ?? `EV-${prod.id}`;
+        }
+        if (prod.costPrice === undefined) {
+          updates.costPrice = seedMatch?.costPrice ?? Math.round(prod.defaultPrice * 0.75);
+        }
+        if (Object.keys(updates).length > 0) {
+          await db.products.update(prod.id!, updates);
         }
       }
     }

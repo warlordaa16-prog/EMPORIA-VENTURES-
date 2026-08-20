@@ -370,6 +370,15 @@ export const Products: React.FC<ProductsProps> = ({
                     </span>
                   </div>
 
+                  {isManager && (
+                    <div className="flex items-center justify-between text-[11px] px-2 py-1 rounded-lg bg-emerald-50/60 border border-emerald-100 text-emerald-800">
+                      <span>Cost: <strong className="font-bold">{formatCurrency(prod.costPrice ?? Math.round(prod.defaultPrice * 0.75), settings.currency)}</strong></span>
+                      <span className="font-extrabold text-emerald-700 font-mono">
+                        +{(((prod.defaultPrice - (prod.costPrice ?? Math.round(prod.defaultPrice * 0.75))) / (prod.defaultPrice || 1)) * 100).toFixed(0)}% Margin
+                      </span>
+                    </div>
+                  )}
+
                   {/* Quick 1-click restock buttons (Only for Admin/Manager/Owner) */}
                   {isManager && prod.id && (
                     <div className="flex items-center gap-1 pt-1">

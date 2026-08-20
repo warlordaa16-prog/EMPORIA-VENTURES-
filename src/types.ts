@@ -35,6 +35,7 @@ export interface Product {
   name: string;
   unit: string;
   defaultPrice: number;
+  costPrice?: number; // Wholesale / Buying cost per unit
   category?: string;
   stockQuantity?: number; // Current on-hand quantity
   lowStockThreshold?: number; // User-defined threshold to trigger low stock visual alert
@@ -51,6 +52,7 @@ export interface SaleItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  costPrice?: number; // Unit cost at time of sale
   subtotal: number;
 }
 
@@ -116,6 +118,9 @@ export interface ReportStats {
   paymentsReceived: number;
   outstandingCredit: number;
   transactionCount: number;
+  totalCost: number; // Cost of Goods Sold (COGS)
+  grossProfit: number; // Total Sales - Total Cost
+  profitMargin: number; // Percentage (Gross Profit / Total Sales) * 100
   cashReceived: number;
   mobileMoneyReceived: number;
   bankReceived: number;
@@ -123,6 +128,15 @@ export interface ReportStats {
   paidCount: number;
   partialCount: number;
   creditCount: number;
+}
+
+export interface ProfitProductStats {
+  description: string;
+  quantity: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  margin: number;
 }
 
 export interface BackupData {

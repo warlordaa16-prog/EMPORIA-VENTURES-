@@ -66,12 +66,22 @@ export default function App() {
         const loadedSettings = await settingsService.getSettings();
         setSettings(loadedSettings);
 
-        // Check if there is an active session
-        const sessionUser = authService.getSessionUser();
+        // Ensure when one opens the site, it opens directly to the homepage
+        let sessionUser = authService.getSessionUser();
+        if (!sessionUser) {
+          const users = await authService.getAllUsers();
+          sessionUser = users.find(u => u.role === 'attendant') || users.find(u => u.role === 'admin') || users[0] || null;
+          if (sessionUser) {
+            authService.saveSessionUser(sessionUser);
+          }
+        }
+        
         if (sessionUser) {
           setCurrentUser(sessionUser);
         }
 
+        // Always guarantee default landing is the dashboard / homepage
+        setActiveTab('dashboard');
         setIsDbReady(true);
       } catch (err) {
         console.error('Failed to initialize database:', err);

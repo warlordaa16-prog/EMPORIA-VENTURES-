@@ -50,20 +50,33 @@ export const salesService = {
       description: string;
       quantity: number;
       unitPrice: number;
+      costPrice?: number;
     }>;
   }): Promise<Sale> {
     const saleId = await this.generateSaleId();
     const now = data.saleDate || new Date().toISOString();
 
-    // Calculate item subtotals
+    // Fetch product map to determine unit costs accurately
+    const allProducts = await productRepository.getAll();
+    const productMap = new Map<number, number>();
+    for (const p of allProducts) {
+      if (p.id) productMap.set(p.id, p.costPrice ?? Math.round(p.defaultPrice * 0.75));
+    }
+
+    // Calculate item subtotals & attach cost price
     const processedItems: SaleItem[] = data.items.map(it => {
       const sub = calculateSubtotal(it.quantity, it.unitPrice);
+      const unitCost = it.costPrice !== undefined 
+        ? it.costPrice 
+        : (it.productId ? productMap.get(it.productId) : Math.round(it.unitPrice * 0.75)) ?? Math.round(it.unitPrice * 0.75);
+
       return {
         saleId,
         productId: it.productId,
         description: it.description.trim(),
         quantity: Number(it.quantity) || 1,
         unitPrice: Number(it.unitPrice) || 0,
+        costPrice: unitCost,
         subtotal: sub
       };
     });

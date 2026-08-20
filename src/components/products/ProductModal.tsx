@@ -24,6 +24,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('packet');
   const [defaultPrice, setDefaultPrice] = useState<number>(0);
+  const [costPrice, setCostPrice] = useState<number>(0);
   const [category, setCategory] = useState('Groceries');
   const [stockQuantity, setStockQuantity] = useState<number>(20);
   const [lowStockThreshold, setLowStockThreshold] = useState<number>(5);
@@ -39,6 +40,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       setName(productToEdit.name);
       setUnit(productToEdit.unit);
       setDefaultPrice(productToEdit.defaultPrice);
+      setCostPrice(productToEdit.costPrice !== undefined ? productToEdit.costPrice : Math.round(productToEdit.defaultPrice * 0.75));
       setCategory(productToEdit.category || 'Groceries');
       setStockQuantity(productToEdit.stockQuantity !== undefined ? productToEdit.stockQuantity : 20);
       setLowStockThreshold(productToEdit.lowStockThreshold !== undefined ? productToEdit.lowStockThreshold : 5);
@@ -48,6 +50,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       setName('');
       setUnit('packet');
       setDefaultPrice(0);
+      setCostPrice(0);
       setCategory('Groceries');
       setStockQuantity(25);
       setLowStockThreshold(5);
@@ -72,6 +75,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           name: name.trim(),
           unit: unit.trim(),
           defaultPrice,
+          costPrice,
           category: category.trim(),
           stockQuantity: Number(stockQuantity) || 0,
           lowStockThreshold: Math.max(0, Number(lowStockThreshold) || 0),
@@ -84,6 +88,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           name: name.trim(),
           unit: unit.trim(),
           defaultPrice,
+          costPrice,
           category: category.trim(),
           stockQuantity: Number(stockQuantity) || 0,
           lowStockThreshold: Math.max(0, Number(lowStockThreshold) || 0),
@@ -141,7 +146,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
               Unit of Measure
@@ -170,7 +175,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Default Price ({currency}) *
+              Selling Price ({currency}) *
             </label>
             <input
               type="number"
@@ -183,7 +188,40 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               className="w-full text-sm font-bold rounded-lg border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-xs focus:border-sky-700 focus:ring-1 focus:ring-sky-700"
             />
           </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Wholesale Cost ({currency})
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="100"
+              value={costPrice || ''}
+              onChange={e => setCostPrice(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              placeholder="e.g. Buying cost"
+              className="w-full text-sm font-bold rounded-lg border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-xs focus:border-sky-700 focus:ring-1 focus:ring-sky-700"
+            />
+          </div>
         </div>
+
+        {/* Live Auto Profit & Margin Preview */}
+        {defaultPrice > 0 && (
+          <div className="px-3.5 py-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-emerald-900">Unit Profit:</span>
+              <span className="font-extrabold text-emerald-700">
+                {currency} {Math.max(0, defaultPrice - costPrice).toLocaleString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 font-black text-emerald-800">
+              <span>Auto Margin:</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-200/70 text-emerald-900 font-mono">
+                {costPrice > 0 ? `${(((defaultPrice - costPrice) / defaultPrice) * 100).toFixed(1)}%` : '100%'}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
