@@ -138,11 +138,11 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-2 text-center">
                 <div className={`p-2 rounded-xl border text-[11px] font-bold ${
-                  currentUser?.role === 'owner'
-                    ? 'bg-amber-50 border-amber-300 text-amber-900 ring-1 ring-amber-300'
+                  currentUser?.role === 'admin' || currentUser?.role === 'owner'
+                    ? 'bg-purple-50 border-purple-300 text-purple-900 ring-1 ring-purple-300'
                     : 'bg-slate-50 border-slate-200 text-slate-600'
                 }`}>
-                  👑 OWNER (Full Control)
+                  👑 ADMIN (Emporia Ventures)
                 </div>
                 <div className={`p-2 rounded-xl border text-[11px] font-bold ${
                   currentUser?.role === 'attendant'

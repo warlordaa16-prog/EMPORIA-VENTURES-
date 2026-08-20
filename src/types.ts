@@ -1,6 +1,6 @@
 export type PaymentStatus = 'PAID' | 'PARTIAL' | 'CREDIT';
 export type PaymentMethod = 'Cash' | 'Mobile Money' | 'Bank' | 'Other';
-export type UserRole = 'owner' | 'attendant';
+export type UserRole = 'owner' | 'admin' | 'attendant';
 
 export interface User {
   id?: number;

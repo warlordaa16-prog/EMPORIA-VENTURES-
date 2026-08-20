@@ -55,14 +55,24 @@ export const authService = {
     const cleanPin = pin.trim();
 
     const users = await this.getAllUsers();
-    const found = users.find(u => u.username.toLowerCase() === cleanUsername);
-
-    if (!found) {
-      return { success: false, error: 'User not found. Please register or check your username.' };
+    
+    // Support aliases for admin ('admin', 'emporia', 'emporia ventures', 'owner')
+    let found = users.find(u => u.username.toLowerCase() === cleanUsername);
+    if (!found && (cleanUsername === 'emporia' || cleanUsername === 'emporia ventures' || cleanUsername === 'owner')) {
+      found = users.find(u => u.role === 'admin' || u.role === 'owner');
     }
 
-    if (found.pin !== cleanPin) {
-      return { success: false, error: 'Incorrect PIN / Password. Please try again.' };
+    if (!found) {
+      return { success: false, error: 'User not found. Please verify your operator credentials.' };
+    }
+
+    // Check PIN with fallback for default passwords
+    const isValidPin = found.pin === cleanPin || 
+      (found.role === 'admin' && (cleanPin === 'Eliana' || cleanPin === 'Emporia123')) ||
+      (found.role === 'attendant' && cleanPin === 'Emporia00');
+
+    if (!isValidPin) {
+      return { success: false, error: 'Incorrect Password / PIN. Please try again.' };
     }
 
     // Update last login
@@ -77,6 +87,59 @@ export const authService = {
     await settingsRepository.save({ activeRole: found.role });
 
     return { success: true, user: found };
+  },
+
+  /**
+   * Hidden Admin Login directly by Admin Password ("Eliana")
+   */
+  async loginAdmin(pin: string): Promise<{ success: boolean; user?: User; error?: string }> {
+    const cleanPin = pin.trim();
+    if (!cleanPin) {
+      return { success: false, error: 'Please enter the Admin security password.' };
+    }
+
+    const users = await this.getAllUsers();
+    let adminUser = users.find(u => u.role === 'admin' || u.role === 'owner');
+
+    const isMatch = cleanPin === 'Eliana' || (adminUser && adminUser.pin === cleanPin);
+
+    if (!isMatch) {
+      return { success: false, error: 'Incorrect Admin password. Access denied.' };
+    }
+
+    if (!adminUser) {
+      const newAdmin: Omit<User, 'id'> = {
+        username: 'admin',
+        fullName: 'Emporia Ventures',
+        role: 'admin',
+        pin: 'Eliana',
+        shopName: 'Emporia Ventures Shop',
+        phone: '+256 700 889 900',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString()
+      };
+      const id = await userRepository.create(newAdmin);
+      adminUser = { ...newAdmin, id };
+    } else {
+      // Ensure name and role are updated to Emporia Ventures / admin
+      if (adminUser.fullName !== 'Emporia Ventures' || adminUser.pin !== 'Eliana') {
+        adminUser.fullName = 'Emporia Ventures';
+        adminUser.pin = 'Eliana';
+        adminUser.role = 'admin';
+        if (adminUser.id) {
+          await userRepository.update(adminUser.id, {
+            fullName: 'Emporia Ventures',
+            pin: 'Eliana',
+            role: 'admin'
+          });
+        }
+      }
+    }
+
+    this.saveSessionUser(adminUser);
+    await settingsRepository.save({ activeRole: 'admin', ownerName: 'Emporia Ventures' });
+
+    return { success: true, user: adminUser };
   },
 
   /**
@@ -139,26 +202,30 @@ export const authService = {
   /**
    * Role Validation
    */
-  validateRole(user: User | null, requiredRole?: UserRole): boolean {
+  validateRole(user: User | null, requiredRole?: UserRole | UserRole[]): boolean {
     if (!user) return false;
     if (!requiredRole) return true;
     if (user.role === 'owner') return true; // Owner has all permissions
+    if (Array.isArray(requiredRole)) {
+      return requiredRole.includes(user.role);
+    }
     return user.role === requiredRole;
   },
 
   /**
    * Check granular permission
    */
-  hasPermission(role: UserRole, action: 'manage_settings' | 'export_backup' | 'view_reports' | 'manage_products' | 'delete_sales' | 'manage_users' | 'record_sale' | 'record_payment'): boolean {
-    if (role === 'owner') return true;
+  hasPermission(role: UserRole, action: 'manage_settings' | 'export_backup' | 'view_reports' | 'manage_products' | 'view_stock_alerts' | 'manage_stock' | 'delete_sales' | 'manage_users' | 'record_sale' | 'record_payment'): boolean {
+    if (role === 'owner' || role === 'admin') return true;
 
-    // Attendant permissions
+    // Attendant permissions: feed in information (sales, payments) and view sales & catalog prices
     switch (action) {
       case 'record_sale':
       case 'record_payment':
         return true;
       case 'manage_products':
-        return true; // Can view catalog
+      case 'view_stock_alerts':
+      case 'manage_stock':
       case 'view_reports':
       case 'manage_settings':
       case 'export_backup':

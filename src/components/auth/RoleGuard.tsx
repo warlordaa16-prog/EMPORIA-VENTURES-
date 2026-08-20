@@ -1,57 +1,74 @@
 import React, { useState } from 'react';
 import { ShieldAlert, KeyRound, Lock, ArrowRight, UserCheck } from 'lucide-react';
-import { User } from '../../types';
+import { User, UserRole } from '../../types';
 import { authService } from '../../services/authService';
 
 interface RoleGuardProps {
-  requiredRole?: 'owner';
+  requiredRole?: UserRole | UserRole[];
   currentUser: User | null;
   children: React.ReactNode;
   title?: string;
   description?: string;
-  onElevateToOwner?: (ownerUser: User) => void;
+  onElevateToAdmin?: (elevatedUser: User) => void;
 }
 
 export const RoleGuard: React.FC<RoleGuardProps> = ({
-  requiredRole = 'owner',
+  requiredRole = ['owner', 'admin'],
   currentUser,
   children,
-  title = 'Restricted Feature',
-  description = 'This section contains sensitive business data and requires Owner / Manager authorization.',
-  onElevateToOwner
+  title = 'Restricted Management Feature',
+  description = 'This section contains sensitive business operations and reports requiring Admin (Manager) or Owner authorization.',
+  onElevateToAdmin
 }) => {
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [isUnlockedLocally, setIsUnlockedLocally] = useState(false);
 
-  // If user is already owner or locally unlocked, grant access
-  if (currentUser?.role === 'owner' || isUnlockedLocally) {
+  // Check if current user meets requirements
+  const hasAccess = (() => {
+    if (isUnlockedLocally) return true;
+    if (!currentUser) return false;
+    if (currentUser.role === 'owner') return true;
+    if (Array.isArray(requiredRole)) {
+      return requiredRole.includes(currentUser.role);
+    }
+    return currentUser.role === requiredRole;
+  })();
+
+  if (hasAccess) {
     return <>{children}</>;
   }
 
-  const handleVerifyOwnerPin = async (e: React.FormEvent) => {
+  const handleVerifyManagerPin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsAuthorizing(true);
 
     try {
+      const cleanPin = pin.trim();
       const users = await authService.getAllUsers();
-      const owner = users.find(u => u.role === 'owner');
+      let adminUser = users.find(u => u.role === 'admin' || u.role === 'owner');
 
-      if (!owner) {
-        setError('No owner account found. Please register an owner account.');
-        setIsAuthorizing(false);
-        return;
-      }
+      const isMatch = cleanPin === 'Eliana' || (adminUser && adminUser.pin === cleanPin);
 
-      if (owner.pin === pin.trim()) {
+      if (isMatch) {
+        if (!adminUser) {
+          adminUser = {
+            username: 'admin',
+            fullName: 'Emporia Ventures',
+            role: 'admin',
+            pin: 'Eliana',
+            shopName: 'Emporia Ventures Shop',
+            createdAt: new Date().toISOString()
+          };
+        }
         setIsUnlockedLocally(true);
-        if (onElevateToOwner) {
-          onElevateToOwner(owner);
+        if (onElevateToAdmin) {
+          onElevateToAdmin(adminUser);
         }
       } else {
-        setError('Invalid Owner PIN. Access denied.');
+        setError('Invalid Admin Password. Access denied.');
       }
     } catch {
       setError('Authorization check failed.');
@@ -68,7 +85,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
 
       <div className="space-y-1.5">
         <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100/70 text-amber-900 text-[10px] font-black uppercase tracking-wider">
-          <ShieldAlert className="w-3 h-3" /> Role Validation: {requiredRole.toUpperCase()} Required
+          <ShieldAlert className="w-3 h-3" /> Emporia Ventures · Admin Access
         </div>
         <h2 className="text-xl font-black text-slate-900 tracking-tight">{title}</h2>
         <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
@@ -79,15 +96,15 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
       <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 text-left flex items-start gap-2.5">
         <UserCheck className="w-4 h-4 text-[#173B6C] shrink-0 mt-0.5" />
         <div>
-          Current Active Profile: <strong className="text-slate-900">{currentUser?.fullName}</strong> (
-          <span className="font-mono text-sky-800 font-bold uppercase">{currentUser?.role}</span>)
+          Current Counter Session: <strong className="text-slate-900">{currentUser?.fullName || 'Attendant'}</strong> (
+          <span className="font-mono text-sky-800 font-bold uppercase">{currentUser?.role || 'attendant'}</span>)
           <div className="text-[11px] text-slate-500 mt-0.5">
-            Enter the Owner PIN (Default: <code>1234</code>) to unlock this view.
+            Admin authorization required. Please enter the management password to unlock.
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleVerifyOwnerPin} className="space-y-3 max-w-xs mx-auto">
+      <form onSubmit={handleVerifyManagerPin} className="space-y-3 max-w-xs mx-auto">
         {error && (
           <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold">
             {error}
@@ -98,10 +115,10 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
           <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="password"
-            maxLength={8}
+            maxLength={20}
             value={pin}
             onChange={e => setPin(e.target.value)}
-            placeholder="Enter Owner PIN (1234)"
+            placeholder="Enter Admin Password"
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2F6DB2]/30 focus:border-[#2F6DB2]"
             autoFocus
           />
@@ -116,7 +133,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
             <span>Validating...</span>
           ) : (
             <>
-              <span>Authorize & Unlock</span>
+              <span>Authorize as Emporia Ventures</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </>
           )}

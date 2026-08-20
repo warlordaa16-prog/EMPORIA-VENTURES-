@@ -388,11 +388,15 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                         className="w-full text-xs rounded-md border-slate-300 bg-white px-2 py-1 text-slate-700 shadow-2xs mb-1"
                       >
                         <option value="">-- Quick select product --</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({formatCurrency(p.defaultPrice, currency)} / {p.unit})
-                          </option>
-                        ))}
+                        {products.map(p => {
+                          const isLow = (p.stockQuantity ?? 0) <= (p.lowStockThreshold ?? 5);
+                          const isOut = (p.stockQuantity ?? 0) <= 0;
+                          return (
+                            <option key={p.id} value={p.id}>
+                              {p.name} — {isOut ? '⚠️ OUT OF STOCK' : `Stock: ${p.stockQuantity ?? 0} ${p.unit}s`}{isLow && !isOut ? ' (Low)' : ''} ({formatCurrency(p.defaultPrice, currency)})
+                            </option>
+                          );
+                        })}
                       </select>
                     )}
                     <input

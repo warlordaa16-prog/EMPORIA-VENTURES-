@@ -2,10 +2,10 @@ import { Customer, Payment, Product, Sale, SaleItem, ShopSettings, User } from '
 
 export const SEED_USERS: Omit<User, 'id'>[] = [
   {
-    username: 'owner',
-    fullName: 'Emmanuel K. (Director)',
-    role: 'owner',
-    pin: '1234',
+    username: 'admin',
+    fullName: 'Emporia Ventures',
+    role: 'admin',
+    pin: 'Eliana',
     phone: '+256 700 889 900',
     shopName: 'Emporia Ventures Shop',
     createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
@@ -13,9 +13,9 @@ export const SEED_USERS: Omit<User, 'id'>[] = [
   },
   {
     username: 'attendant',
-    fullName: 'Sarah K. (Sales Lead)',
+    fullName: 'Attendant',
     role: 'attendant',
-    pin: '0000',
+    pin: 'Emporia00',
     phone: '+256 701 234 567',
     shopName: 'Emporia Ventures Shop',
     createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
@@ -29,11 +29,11 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   address: 'Victoria Mall Suite 4B, Emporia Boulevard',
   currency: 'UGX',
   receiptFooter: 'Thank you for shopping at Emporia Ventures! Quality & Value Guaranteed. Please keep this receipt.',
-  activeRole: 'owner',
-  attendantName: 'Sarah K. (Sales Lead)',
-  ownerName: 'Emmanuel K. (Director)',
+  activeRole: 'attendant',
+  attendantName: 'Attendant',
+  ownerName: 'Emporia Ventures',
   enablePin: false,
-  pinCode: '1234'
+  pinCode: 'Eliana'
 };
 
 export const SEED_PRODUCTS: Omit<Product, 'id'>[] = [

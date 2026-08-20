@@ -76,15 +76,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   }, [activeTab]);
 
   const isOwner = currentUser?.role === 'owner';
+  const isManager = currentUser?.role === 'owner' || currentUser?.role === 'admin';
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, ownerOnly: false },
-    { id: 'sales', label: 'Sales', icon: ShoppingBag, ownerOnly: false },
-    { id: 'customers', label: 'Customers', icon: Users, ownerOnly: false },
-    { id: 'payments', label: 'Payments', icon: CreditCard, ownerOnly: false },
-    { id: 'reports', label: 'Reports', icon: FileText, ownerOnly: true },
-    { id: 'products', label: 'Items & Stock', icon: Package, ownerOnly: false, badge: lowStockCount > 0 ? `${lowStockCount}` : undefined },
-    { id: 'settings', label: 'Settings & Backup', icon: SettingsIcon, ownerOnly: true },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, managerOnly: false },
+    { id: 'sales', label: 'Sales', icon: ShoppingBag, managerOnly: false },
+    { id: 'customers', label: 'Customers', icon: Users, managerOnly: false },
+    { id: 'payments', label: 'Payments', icon: CreditCard, managerOnly: false },
+    { id: 'reports', label: 'Reports', icon: FileText, managerOnly: true },
+    { id: 'products', label: 'Items & Stock', icon: Package, managerOnly: false, badge: (isManager && lowStockCount > 0) ? `${lowStockCount}` : undefined },
+    { id: 'settings', label: 'Settings & Backup', icon: SettingsIcon, managerOnly: true },
   ];
 
   return (
@@ -158,16 +159,24 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
             {/* Authenticated User & Validated Role Pill */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 border border-slate-200/70 text-slate-700 text-xs font-semibold">
-              <span className={`w-2 h-2 rounded-full ${isOwner ? 'bg-amber-500' : 'bg-sky-500'}`}></span>
-              <span className="hidden sm:inline font-bold text-slate-900">{currentUser?.fullName || 'User'}</span>
+              <span className={`w-2 h-2 rounded-full ${
+                currentUser?.role === 'owner'
+                  ? 'bg-amber-500'
+                  : currentUser?.role === 'admin'
+                  ? 'bg-purple-500'
+                  : 'bg-sky-500'
+              }`}></span>
+              <span className="hidden sm:inline font-bold text-slate-900">{currentUser?.fullName || 'Attendant'}</span>
               <span
                 className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
-                  isOwner
+                  currentUser?.role === 'owner'
                     ? 'bg-amber-100 text-amber-900 border-amber-300'
+                    : currentUser?.role === 'admin'
+                    ? 'bg-purple-100 text-purple-900 border-purple-300'
                     : 'bg-sky-100 text-sky-900 border-sky-300'
                 }`}
               >
-                {currentUser?.role || 'Guest'}
+                {currentUser?.role || 'attendant'}
               </span>
               {/* Logout / Switch User Button */}
               <button
@@ -206,7 +215,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             {navItems.map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
-              const isRestricted = item.ownerOnly && !isOwner;
+              const isRestricted = item.managerOnly && !isManager;
 
               return (
                 <button
@@ -233,7 +242,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                     )}
                     {isRestricted && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 font-bold border border-slate-200 flex items-center gap-0.5">
-                        <Lock className="w-2.5 h-2.5" /> Owner
+                        <Lock className="w-2.5 h-2.5" /> Admin
                       </span>
                     )}
                   </div>
@@ -263,11 +272,21 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               <Layers className="w-3 h-3" /> Inspect Architecture
             </button>
           </div>
+
+          {/* Copyright signature */}
+          <div className="text-center text-[11px] font-semibold text-slate-400 py-1">
+            ©️ by Arnible
+          </div>
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 min-w-0 pb-20 md:pb-6">
-          {children}
+        <main className="flex-1 min-w-0 pb-20 md:pb-6 flex flex-col justify-between">
+          <div>
+            {children}
+          </div>
+          <footer className="mt-8 pt-4 border-t border-slate-200/60 text-center text-xs font-semibold text-slate-400">
+            ©️ by Arnible
+          </footer>
         </main>
       </div>
 

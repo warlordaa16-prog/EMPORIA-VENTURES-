@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Printer, Share2, Trash2, CheckCircle2, MessageSquare, PlusCircle, ArrowLeft } from 'lucide-react';
 import { PaymentMethod, Sale, ShopSettings } from '../../types';
+import { BRAND_CONFIG } from '../../constants/branding';
 import { paymentService } from '../../services/paymentService';
 import { salesService } from '../../services/salesService';
 import { formatCurrency } from '../../utils/currency';
@@ -140,9 +141,17 @@ export const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({
           className="bg-white p-5 rounded-xl border border-slate-300 font-mono text-xs text-slate-800 space-y-4 shadow-xs"
         >
           {/* Shop branding header */}
-          <div className="text-center space-y-1 pb-3 border-b border-dashed border-slate-300">
+          <div className="text-center space-y-1.5 pb-3 border-b border-dashed border-slate-300 flex flex-col items-center">
+            {BRAND_CONFIG.logoUrl && (
+              <img
+                src={BRAND_CONFIG.logoUrl}
+                alt="Emporia Ventures Logo"
+                referrerPolicy="no-referrer"
+                className="w-10 h-10 rounded-lg object-cover mb-1 border border-slate-200"
+              />
+            )}
             <h3 className="font-bold text-sm tracking-tight text-slate-900 uppercase font-sans">
-              {settings.shopName}
+              {settings.shopName || BRAND_CONFIG.shopName}
             </h3>
             <p className="text-[11px] text-slate-500 font-sans">{settings.address}</p>
             <p className="text-[11px] text-slate-500 font-sans">Tel: {settings.phone}</p>

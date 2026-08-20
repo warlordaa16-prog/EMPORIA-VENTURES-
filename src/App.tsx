@@ -170,6 +170,7 @@ export default function App() {
       {activeTab === 'dashboard' && (
         <Dashboard
           settings={settings}
+          currentUser={currentUser}
           onOpenNewSale={() => handleOpenNewSale()}
           onOpenRecordPayment={() => handleOpenRecordPayment()}
           onOpenNewCustomer={() => handleOpenCustomerModal()}
@@ -211,10 +212,10 @@ export default function App() {
       {activeTab === 'reports' && (
         <RoleGuard
           currentUser={currentUser}
-          requiredRole="owner"
-          title="Owner Financial Reports"
-          description="Access to sales summaries, profit breakdowns, and debtor ledgers is restricted to Shop Owners."
-          onElevateToOwner={ownerUser => setCurrentUser(ownerUser)}
+          requiredRole={['owner', 'admin']}
+          title="Management Financial Reports"
+          description="Access to sales summaries, profit breakdowns, and debtor ledgers is restricted to Store Managers and Owners."
+          onElevateToAdmin={elevatedUser => setCurrentUser(elevatedUser)}
         >
           <Reports
             settings={settings}
@@ -226,6 +227,7 @@ export default function App() {
       {activeTab === 'products' && (
         <Products
           settings={settings}
+          currentUser={currentUser}
           onOpenProductModal={handleOpenProductModal}
           refreshTrigger={refreshTrigger}
         />
@@ -234,10 +236,10 @@ export default function App() {
       {activeTab === 'settings' && (
         <RoleGuard
           currentUser={currentUser}
-          requiredRole="owner"
+          requiredRole={['owner', 'admin']}
           title="Shop Settings & Device Backup"
-          description="Access to business configuration, currency settings, and database backups requires Owner credentials."
-          onElevateToOwner={ownerUser => setCurrentUser(ownerUser)}
+          description="Access to business configuration, currency settings, and database backups requires Admin/Owner credentials."
+          onElevateToAdmin={elevatedUser => setCurrentUser(elevatedUser)}
         >
           <Settings
             settings={settings}

@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, CreditCard, AlertTriangle, TrendingUp, Plus, UserPlus, FileText, ArrowRight, Clock, Search, ChevronRight, CheckCircle2, RefreshCw, Layers, Package } from 'lucide-react';
-import { CustomerSummary, Payment, Product, ReportStats, Sale, ShopSettings } from '../types';
+import {
+  ShoppingBag,
+  CreditCard,
+  AlertTriangle,
+  TrendingUp,
+  Plus,
+  UserPlus,
+  FileText,
+  ArrowRight,
+  Clock,
+  Search,
+  ChevronRight,
+  CheckCircle2,
+  Package,
+  Layers,
+  ShieldCheck,
+  Receipt
+} from 'lucide-react';
+import { CustomerSummary, Payment, Product, ReportStats, Sale, ShopSettings, User } from '../types';
 import { customerService } from '../services/customerService';
 import { reportService } from '../services/reportService';
 import { salesService } from '../services/salesService';
@@ -12,6 +29,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 
 interface DashboardProps {
   settings: ShopSettings;
+  currentUser: User | null;
   onOpenNewSale: () => void;
   onOpenRecordPayment: () => void;
   onOpenNewCustomer: () => void;
@@ -23,6 +41,7 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({
   settings,
+  currentUser,
   onOpenNewSale,
   onOpenRecordPayment,
   onOpenNewCustomer,
@@ -39,6 +58,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [restockingId, setRestockingId] = useState<number | null>(null);
   const [isAlertBannerDismissed, setIsAlertBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const isManager = currentUser?.role === 'owner' || currentUser?.role === 'admin';
 
   useEffect(() => {
     loadDashboardData();
@@ -82,9 +103,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Banner / Welcome greeting Bento Hero Block with Emporia Ventures Branding */}
+      {/* Top Banner / Welcome greeting Bento Hero Block */}
       <div className="bg-gradient-to-br from-[#173B6C] via-[#1E4D8C] to-[#2F6DB2] text-white p-5 sm:p-7 rounded-3xl shadow-[0_4px_20px_-4px_rgba(23,59,108,0.25)] relative overflow-hidden border border-white/10">
-        {/* Subtle decorative store backdrop mesh */}
         <div 
           className="absolute right-0 top-0 bottom-0 w-1/3 opacity-15 bg-cover bg-center pointer-events-none mix-blend-luminosity hidden md:block"
           style={{ backgroundImage: `url(${BRAND_CONFIG.frontPhotoUrl})` }}
@@ -102,7 +122,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 backdrop-blur-xs text-[10px] font-extrabold tracking-wider uppercase border border-amber-300/30 text-amber-200">
-                  Official Store Portal
+                  {isManager ? 'Store Management Terminal' : 'Attendant Counter Terminal'}
                 </span>
                 <span className="text-xs text-sky-200 font-medium">
                   {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
@@ -111,16 +131,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white">
                 {settings.shopName || BRAND_CONFIG.shopName}
               </h1>
-              <p className="text-xs text-sky-100/90 max-w-md">
-                Active Operator: <strong className="text-white font-bold">{settings.activeRole === 'owner' ? settings.ownerName : settings.attendantName}</strong>
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono uppercase tracking-wide">
-                  {settings.activeRole}
+              <p className="text-xs text-sky-100/90 flex items-center gap-2">
+                <span>Active Role:</span>
+                <strong className="text-white font-bold">{currentUser?.fullName || (isManager ? 'Admin' : 'Attendant')}</strong>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wide border ${
+                  currentUser?.role === 'owner'
+                    ? 'bg-amber-400/30 border-amber-300 text-amber-200'
+                    : currentUser?.role === 'admin'
+                    ? 'bg-purple-400/30 border-purple-300 text-purple-200'
+                    : 'bg-white/20 border-white/30 text-white'
+                }`}>
+                  {currentUser?.role || 'attendant'}
                 </span>
               </p>
             </div>
           </div>
 
-          {/* Quick sale button in banner */}
+          {/* Quick sale buttons in banner */}
           <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
             <button
               id="dash-quick-sale-button"
@@ -142,8 +169,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Visual Low Stock Alert Notification Banner */}
-      {lowStockItems.length > 0 && !isAlertBannerDismissed && (
+      {/* Visual Low Stock Alert Notification Banner: ONLY SHOWN TO ADMIN (MANAGER) & OWNER */}
+      {isManager && lowStockItems.length > 0 && !isAlertBannerDismissed && (
         <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-50 via-amber-50/90 to-orange-50 border-2 border-amber-300/80 shadow-md shadow-amber-900/5 animate-in slide-in-from-top-2 duration-300">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3.5">
@@ -153,14 +180,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black text-amber-900 uppercase tracking-wide">
-                    Low Stock Threshold Alert
+                    Admin / Manager Low Stock Alert
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 text-[10px] font-black font-mono">
                     {lowStockItems.length} {lowStockItems.length === 1 ? 'item' : 'items'} critical
                   </span>
                 </div>
                 <p className="text-xs text-amber-800 font-medium leading-relaxed">
-                  The following items have fallen to or below your configured minimum threshold:
+                  The following inventory items are running low and require restocking:
                   <span className="font-bold text-amber-950 ml-1">
                     {lowStockItems.map(p => `${p.name} (${p.stockQuantity ?? 0}/${p.lowStockThreshold ?? 5})`).slice(0, 3).join(', ')}
                     {lowStockItems.length > 3 ? ` +${lowStockItems.length - 3} more` : ''}
@@ -246,41 +273,66 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Low Stock Watch KPI Tile */}
-        <div 
-          onClick={() => onNavigate('products')}
-          className={`p-5 rounded-2xl border shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-2 flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02] ${
-            lowStockItems.length > 0
-              ? 'bg-amber-50/70 border-amber-300'
-              : 'bg-white border-slate-200/80'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Stock Alert Level</span>
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
+        {/* 4th KPI Card: Stock Alert Level for Admin/Owner OR Shift Activity for Attendant */}
+        {isManager ? (
+          <div 
+            onClick={() => onNavigate('products')}
+            className={`p-5 rounded-2xl border shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-2 flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02] ${
               lowStockItems.length > 0
-                ? 'bg-amber-100 text-amber-800 border-amber-200'
-                : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-            }`}>
-              {lowStockItems.length > 0 ? (
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              )}
+                ? 'bg-amber-50/70 border-amber-300'
+                : 'bg-white border-slate-200/80'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Stock Alert Level</span>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
+                lowStockItems.length > 0
+                  ? 'bg-amber-100 text-amber-800 border-amber-200'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+              }`}>
+                {lowStockItems.length > 0 ? (
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                )}
+              </div>
+            </div>
+            <div>
+              <div className={`text-xl sm:text-2xl font-black tracking-tight ${
+                lowStockItems.length > 0 ? 'text-amber-700' : 'text-slate-900'
+              }`}>
+                {lowStockItems.length > 0 ? `${lowStockItems.length} Low Stock` : 'All Stocked'}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+                <span>{allProductsCount} items monitored</span>
+                <span className="text-[10px] font-bold text-[#173B6C]">Manage →</span>
+              </div>
             </div>
           </div>
-          <div>
-            <div className={`text-xl sm:text-2xl font-black tracking-tight ${
-              lowStockItems.length > 0 ? 'text-amber-700' : 'text-slate-900'
-            }`}>
-              {lowStockItems.length > 0 ? `${lowStockItems.length} Low Stock` : 'All Stocked'}
+        ) : (
+          <div 
+            onClick={() => onNavigate('sales')}
+            className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-2 flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02]"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Attendant Shift</span>
+              <div className="w-9 h-9 rounded-xl bg-sky-50 text-[#173B6C] flex items-center justify-center border border-sky-100">
+                <Receipt className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
-              <span>{allProductsCount} total items monitored</span>
-              <span className="text-[10px] font-bold text-[#173B6C]">Manage →</span>
+            <div>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                {todayStats?.transactionCount || 0} Invoices
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+                <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active Counter Mode
+                </span>
+                <span className="text-[10px] font-bold text-[#173B6C]">Sales →</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Main Bento Split: Recent Transactions (Left) + Top Debtors & Quick Operations (Right) */}
@@ -365,8 +417,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             )}
           </div>
 
-          {/* Low Stock Items Live Monitoring Widget */}
-          {lowStockItems.length > 0 && (
+          {/* Low Stock Items Live Monitoring Widget: ONLY SHOWN TO ADMIN (MANAGER) & OWNER */}
+          {isManager && lowStockItems.length > 0 && (
             <div className="bg-white rounded-3xl border border-amber-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
               <div className="p-4 border-b border-amber-100 flex items-center justify-between bg-amber-50/60">
                 <div className="flex items-center gap-2">
@@ -510,7 +562,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* Quick Operations Bento Hub */}
           <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-3">
             <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              Quick Operations
+              Quick Operations ({isManager ? 'Management' : 'Counter'})
             </h4>
 
             <div className="grid grid-cols-2 gap-2.5">
@@ -522,19 +574,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <UserPlus className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-bold text-slate-900 block">+ Add Customer</span>
-                <span className="text-[10px] text-slate-500">New client ledger</span>
+                <span className="text-[10px] text-slate-500">New client record</span>
               </button>
 
-              <button
-                onClick={() => onNavigate('reports')}
-                className="p-3 bg-slate-50 hover:bg-emerald-50/80 border border-slate-200/80 rounded-2xl text-left transition-all group cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-bold text-slate-900 block">Reports & P&L</span>
-                <span className="text-[10px] text-slate-500">Daily / Monthly stats</span>
-              </button>
+              {isManager ? (
+                <button
+                  onClick={() => onNavigate('reports')}
+                  className="p-3 bg-slate-50 hover:bg-emerald-50/80 border border-slate-200/80 rounded-2xl text-left transition-all group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 block">Reports & P&L</span>
+                  <span className="text-[10px] text-slate-500">Daily / Monthly stats</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => onNavigate('sales')}
+                  className="p-3 bg-slate-50 hover:bg-sky-50/80 border border-slate-200/80 rounded-2xl text-left transition-all group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-sky-100 text-[#173B6C] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <Receipt className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 block">View Sales</span>
+                  <span className="text-[10px] text-slate-500">Invoices & receipts</span>
+                </button>
+              )}
 
               <button
                 onClick={() => onNavigate('products')}
@@ -544,19 +609,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <ShoppingBag className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-bold text-slate-900 block">Item Catalog</span>
-                <span className="text-[10px] text-slate-500">Stock & thresholds</span>
+                <span className="text-[10px] text-slate-500">
+                  {isManager ? 'Stock & thresholds' : 'Lookup item prices'}
+                </span>
               </button>
 
-              <button
-                onClick={() => onNavigate('settings')}
-                className="p-3 bg-slate-50 hover:bg-amber-50/80 border border-slate-200/80 rounded-2xl text-left transition-all group cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-bold text-slate-900 block">Shop Profile</span>
-                <span className="text-[10px] text-slate-500">Brand & Settings</span>
-              </button>
+              {isManager ? (
+                <button
+                  onClick={() => onNavigate('settings')}
+                  className="p-3 bg-slate-50 hover:bg-amber-50/80 border border-slate-200/80 rounded-2xl text-left transition-all group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 block">Shop Profile</span>
+                  <span className="text-[10px] text-slate-500">Brand & Settings</span>
+                </button>
+              ) : (
+                <button
+                  onClick={onOpenRecordPayment}
+                  className="p-3 bg-slate-50 hover:bg-emerald-50/80 border border-slate-200/80 rounded-2xl text-left transition-all group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 block">Record Payment</span>
+                  <span className="text-[10px] text-slate-500">Receive cash/MoMo</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -564,4 +644,3 @@ export const Dashboard: React.FC<DashboardProps> = ({
     </div>
   );
 };
-

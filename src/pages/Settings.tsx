@@ -227,23 +227,23 @@ export const Settings: React.FC<SettingsProps> = ({
         {/* User Role selection */}
         <div className="pt-3.5 border-t border-slate-100">
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-            Active User Role
+            Active System Mode
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div
-              onClick={() => handleChange('activeRole', 'owner')}
+              onClick={() => handleChange('activeRole', 'admin')}
               className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                formData.activeRole === 'owner'
-                  ? 'bg-sky-50/80 border-[#173B6C] ring-1 ring-[#173B6C]'
+                formData.activeRole === 'admin' || formData.activeRole === 'owner'
+                  ? 'bg-purple-50/80 border-purple-600 ring-1 ring-purple-600'
                   : 'bg-white border-slate-200 hover:bg-slate-50'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-black text-xs text-slate-900">👑 Owner / Manager</span>
-                <span className="text-[10px] uppercase font-bold text-[#173B6C]">Full Control</span>
+                <span className="font-black text-xs text-slate-900">👑 Admin (Emporia Ventures)</span>
+                <span className="text-[10px] uppercase font-bold text-purple-700">Full Store Control</span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                Full access to financial reports, editing/deleting sales, data backup, and settings.
+                Full access to financial reports, P&L summaries, stock management, inventory thresholds, and data backup.
               </p>
             </div>
 
@@ -257,10 +257,10 @@ export const Settings: React.FC<SettingsProps> = ({
             >
               <div className="flex items-center justify-between">
                 <span className="font-black text-xs text-slate-900">💼 Attendant Mode</span>
-                <span className="text-[10px] uppercase font-bold text-slate-600">Counter Safe</span>
+                <span className="text-[10px] uppercase font-bold text-[#173B6C]">Counter Safe</span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                Streamlined for rapid sales recording and customer payment collection.
+                Streamlined for rapid sales entry, customer debt collection, and receipt issuance.
               </p>
             </div>
           </div>
