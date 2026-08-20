@@ -1,28 +1,27 @@
-import { db } from '../db/database';
+import { salesRepository } from '../repositories/salesRepository';
+import { paymentRepository } from '../repositories/paymentRepository';
+import { productRepository } from '../repositories/productRepository';
 import { Payment, PaymentMethod, Sale, SaleItem } from '../types';
 import { calculateBalance, calculateSubtotal, calculateTotal, determinePaymentStatus } from '../utils/calculations';
 
 export const salesService = {
   async getAll(): Promise<Sale[]> {
-    const sales = await db.sales.reverse().sortBy('saleDate');
-    return sales;
+    return await salesRepository.getAll();
   },
 
   async getById(id: string): Promise<Sale | undefined> {
-    const sale = await db.sales.get(id);
+    const sale = await salesRepository.getById(id);
     if (sale) {
-      const items = await db.sale_items.where('saleId').equals(id).toArray();
+      const items = await salesRepository.getItemsBySaleId(id);
       sale.items = items;
     }
     return sale;
   },
 
   async generateSaleId(): Promise<string> {
-    const count = await db.sales.count();
-    const allSales = await db.sales.toArray();
-    let maxNum = count;
+    const allSales = await salesRepository.getAll();
+    let maxNum = allSales.length;
 
-    // Scan existing IDs like SP-000045
     for (const s of allSales) {
       if (s.id.startsWith('SP-')) {
         const num = parseInt(s.id.replace('SP-', ''), 10);
@@ -96,32 +95,43 @@ export const salesService = {
       items: processedItems
     };
 
-    // Atomic write to DB
-    await db.transaction('rw', [db.sales, db.sale_items, db.payments], async () => {
-      await db.sales.add(sale);
-      if (processedItems.length > 0) {
-        await db.sale_items.bulkAdd(processedItems);
-      }
+    // Save sale + items in repository
+    await salesRepository.create(sale, processedItems);
 
-      // If any amount was paid upon creation, record into the payment ledger
-      if (amountPaid > 0) {
-        const paymentCount = await db.payments.count();
-        const paymentId = `PM-${String(paymentCount + 1).padStart(6, '0')}`;
-        const payment: Payment = {
-          id: paymentId,
-          customerId: data.customerId,
-          customerName: sale.customerName,
-          saleId: saleId,
-          amount: amountPaid,
-          paymentMethod: data.paymentMethod,
-          paymentDate: now,
-          notes: `Initial payment for ${saleId}`,
-          createdBy: data.createdBy || 'Staff',
-          createdAt: now
-        };
-        await db.payments.add(payment);
+    // Automatically update product stock quantities
+    for (const item of processedItems) {
+      if (item.productId) {
+        try {
+          const product = await productRepository.getById(item.productId);
+          if (product && product.trackStock !== false && product.stockQuantity !== undefined) {
+            const newStock = Math.max(0, product.stockQuantity - item.quantity);
+            await productRepository.update(product.id!, { stockQuantity: newStock });
+          }
+        } catch (e) {
+          console.warn('Failed to update product stock for item', item, e);
+        }
       }
-    });
+    }
+
+    // If initial payment was made, record in payment repository
+    if (amountPaid > 0) {
+      const allPayments = await paymentRepository.getAll();
+      const nextPayNum = allPayments.length + 1;
+      const paymentId = `PM-${String(nextPayNum).padStart(6, '0')}`;
+      const payment: Payment = {
+        id: paymentId,
+        customerId: data.customerId,
+        customerName: sale.customerName,
+        saleId: saleId,
+        amount: amountPaid,
+        paymentMethod: data.paymentMethod,
+        paymentDate: now,
+        notes: `Initial payment for ${saleId}`,
+        createdBy: data.createdBy || 'Staff',
+        createdAt: now
+      };
+      await paymentRepository.create(payment);
+    }
 
     return sale;
   },
@@ -152,22 +162,15 @@ export const salesService = {
       updatedSale.items = items;
     }
 
-    await db.transaction('rw', [db.sales, db.sale_items], async () => {
-      await db.sales.put(updatedSale);
-      if (items) {
-        await db.sale_items.where('saleId').equals(id).delete();
-        await db.sale_items.bulkAdd(items.map(it => ({ ...it, saleId: id })));
-      }
-    });
-
+    await salesRepository.update(id, updatedSale);
     return updatedSale;
   },
 
   async deleteSale(id: string): Promise<void> {
-    await db.transaction('rw', [db.sales, db.sale_items, db.payments], async () => {
-      await db.sales.delete(id);
-      await db.sale_items.where('saleId').equals(id).delete();
-      await db.payments.where('saleId').equals(id).delete();
-    });
+    await salesRepository.delete(id);
+    const relatedPayments = await paymentRepository.getBySaleId(id);
+    for (const p of relatedPayments) {
+      await paymentRepository.delete(p.id);
+    }
   }
 };

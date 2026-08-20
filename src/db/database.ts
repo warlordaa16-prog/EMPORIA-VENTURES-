@@ -1,8 +1,9 @@
 import Dexie, { Table } from 'dexie';
-import { Customer, Payment, Product, Sale, SaleItem, ShopSettings } from '../types';
-import { DEFAULT_SETTINGS, SEED_CUSTOMERS, SEED_PRODUCTS } from './seedData';
+import { Customer, Payment, Product, Sale, SaleItem, ShopSettings, User } from '../types';
+import { DEFAULT_SETTINGS, SEED_CUSTOMERS, SEED_PRODUCTS, SEED_USERS } from './seedData';
 
 export class ShopPayDatabase extends Dexie {
+  users!: Table<User, number>;
   customers!: Table<Customer, number>;
   products!: Table<Product, number>;
   sales!: Table<Sale, string>;
@@ -12,7 +13,8 @@ export class ShopPayDatabase extends Dexie {
 
   constructor() {
     super('ShopPayDB');
-    this.version(1).stores({
+    this.version(2).stores({
+      users: '++id, username, role, createdAt',
       customers: '++id, name, phone, createdAt',
       products: '++id, name, defaultPrice, category, createdAt',
       sales: 'id, customerId, customerName, saleDate, status, paymentMethod, createdAt',
@@ -25,16 +27,56 @@ export class ShopPayDatabase extends Dexie {
 
 export const db = new ShopPayDatabase();
 
+let initPromise: Promise<void> | null = null;
+
 export async function initializeDatabase() {
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
+    const usersCount = await db.users.count();
+    if (usersCount === 0) {
+      for (const u of SEED_USERS) {
+        const exists = await db.users.where('username').equalsIgnoreCase(u.username).first();
+        if (!exists) {
+          await db.users.add(u as User);
+        }
+      }
+    }
+
   const settingsCount = await db.settings.count();
   if (settingsCount === 0) {
     await db.settings.add({ ...DEFAULT_SETTINGS });
+  } else {
+    const currentSettings = await db.settings.toCollection().first();
+    if (currentSettings && (currentSettings.shopName === 'Kampa Fresh & General Stores' || currentSettings.shopName.includes('Kampa'))) {
+      await db.settings.update(currentSettings.id!, {
+        shopName: DEFAULT_SETTINGS.shopName,
+        phone: DEFAULT_SETTINGS.phone,
+        address: DEFAULT_SETTINGS.address,
+        receiptFooter: DEFAULT_SETTINGS.receiptFooter,
+        ownerName: DEFAULT_SETTINGS.ownerName,
+        attendantName: DEFAULT_SETTINGS.attendantName
+      });
+    }
   }
 
   const productsCount = await db.products.count();
   if (productsCount === 0) {
     for (const prod of SEED_PRODUCTS) {
       await db.products.add(prod as Product);
+    }
+  } else {
+    // Migration: populate stockQuantity and lowStockThreshold for products if missing
+    const existingProducts = await db.products.toArray();
+    for (const prod of existingProducts) {
+      if (prod.stockQuantity === undefined || prod.lowStockThreshold === undefined) {
+        const seedMatch = SEED_PRODUCTS.find(sp => sp.name.toLowerCase() === prod.name.toLowerCase());
+        await db.products.update(prod.id!, {
+          stockQuantity: prod.stockQuantity ?? seedMatch?.stockQuantity ?? 15,
+          lowStockThreshold: prod.lowStockThreshold ?? seedMatch?.lowStockThreshold ?? 5,
+          trackStock: prod.trackStock ?? true,
+          sku: prod.sku ?? seedMatch?.sku ?? `EV-${prod.id}`
+        });
+      }
     }
   }
 
@@ -204,5 +246,7 @@ export async function initializeDatabase() {
       createdBy: 'Sarah K.',
       createdAt: todayIso
     });
-  }
+    }
+  })();
+  return initPromise;
 }

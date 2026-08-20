@@ -2,6 +2,24 @@ export type PaymentStatus = 'PAID' | 'PARTIAL' | 'CREDIT';
 export type PaymentMethod = 'Cash' | 'Mobile Money' | 'Bank' | 'Other';
 export type UserRole = 'owner' | 'attendant';
 
+export interface User {
+  id?: number;
+  username: string;
+  fullName: string;
+  role: UserRole;
+  pin: string;
+  phone?: string;
+  shopName?: string;
+  createdAt: string;
+  lastLogin?: string;
+}
+
+export interface AuthSession {
+  currentUser: User | null;
+  isAuthenticated: boolean;
+  role: UserRole;
+}
+
 export interface Customer {
   id?: number;
   name: string;
@@ -18,6 +36,10 @@ export interface Product {
   unit: string;
   defaultPrice: number;
   category?: string;
+  stockQuantity?: number; // Current on-hand quantity
+  lowStockThreshold?: number; // User-defined threshold to trigger low stock visual alert
+  trackStock?: boolean; // Whether stock alerts are enabled for this product
+  sku?: string; // Product code / Barcode
   createdAt: string;
   updatedAt: string;
 }
@@ -106,10 +128,13 @@ export interface ReportStats {
 export interface BackupData {
   version: string;
   exportedAt: string;
+  shopName?: string;
   settings: ShopSettings;
+  users?: User[];
   customers: Customer[];
   products: Product[];
   sales: Sale[];
   saleItems: SaleItem[];
   payments: Payment[];
 }
+

@@ -1,71 +1,35 @@
-import { db, initializeDatabase } from '../db/database';
-import { BackupData, Customer, Payment, Product, Sale, SaleItem } from '../types';
+import { backupRepository } from '../repositories/backupRepository';
+import { salesRepository } from '../repositories/salesRepository';
+import { paymentRepository } from '../repositories/paymentRepository';
+import { customerRepository } from '../repositories/customerRepository';
+import { initializeDatabase } from '../db/database';
+import { BackupData } from '../types';
 import { downloadCSV, downloadJSON } from '../utils/export';
-import { settingsService } from './settingsService';
 
 export const backupService = {
+  /**
+   * Export all data as JSON to DEVICE
+   */
   async exportFullBackup(): Promise<BackupData> {
-    const settings = await settingsService.getSettings();
-    const customers = await db.customers.toArray();
-    const products = await db.products.toArray();
-    const sales = await db.sales.toArray();
-    const saleItems = await db.sale_items.toArray();
-    const payments = await db.payments.toArray();
-
+    const backup = await backupRepository.dumpAllData();
     const dateStr = new Date().toISOString().split('T')[0];
-    const backup: BackupData = {
-      version: '1.0.0',
-      exportedAt: new Date().toISOString(),
-      settings,
-      customers,
-      products,
-      sales,
-      saleItems,
-      payments
-    };
-
     downloadJSON(backup, `shoppay-backup-${dateStr}.json`);
     return backup;
   },
 
+  /**
+   * Restore all data from JSON backup file uploaded from DEVICE
+   */
   async restoreFromJSON(jsonData: BackupData): Promise<boolean> {
     if (!jsonData || typeof jsonData !== 'object') {
       throw new Error('Invalid backup file format');
     }
-
-    await db.transaction('rw', [db.customers, db.products, db.sales, db.sale_items, db.payments, db.settings], async () => {
-      await db.customers.clear();
-      await db.products.clear();
-      await db.sales.clear();
-      await db.sale_items.clear();
-      await db.payments.clear();
-      await db.settings.clear();
-
-      if (jsonData.settings) {
-        await db.settings.add(jsonData.settings);
-      }
-      if (Array.isArray(jsonData.customers) && jsonData.customers.length > 0) {
-        await db.customers.bulkAdd(jsonData.customers);
-      }
-      if (Array.isArray(jsonData.products) && jsonData.products.length > 0) {
-        await db.products.bulkAdd(jsonData.products);
-      }
-      if (Array.isArray(jsonData.sales) && jsonData.sales.length > 0) {
-        await db.sales.bulkAdd(jsonData.sales);
-      }
-      if (Array.isArray(jsonData.saleItems) && jsonData.saleItems.length > 0) {
-        await db.sale_items.bulkAdd(jsonData.saleItems);
-      }
-      if (Array.isArray(jsonData.payments) && jsonData.payments.length > 0) {
-        await db.payments.bulkAdd(jsonData.payments);
-      }
-    });
-
+    await backupRepository.restoreAllData(jsonData);
     return true;
   },
 
   async exportSalesCSV() {
-    const sales = await db.sales.reverse().sortBy('saleDate');
+    const sales = await salesRepository.getAll();
     const headers = ['Sale ID', 'Date', 'Customer Name', 'Phone', 'Subtotal', 'Discount', 'Total', 'Amount Paid', 'Balance', 'Status', 'Payment Method', 'Notes', 'Recorded By'];
     const rows = sales.map(s => [
       s.id,
@@ -87,7 +51,7 @@ export const backupService = {
   },
 
   async exportPaymentsCSV() {
-    const payments = await db.payments.reverse().sortBy('paymentDate');
+    const payments = await paymentRepository.getAll();
     const headers = ['Payment ID', 'Date', 'Customer Name', 'Sale ID', 'Amount', 'Payment Method', 'Notes', 'Recorded By'];
     const rows = payments.map(p => [
       p.id,
@@ -104,9 +68,9 @@ export const backupService = {
   },
 
   async exportCustomersCSV() {
-    const customers = await db.customers.toArray();
-    const sales = await db.sales.toArray();
-    const payments = await db.payments.toArray();
+    const customers = await customerRepository.getAll();
+    const sales = await salesRepository.getAll();
+    const payments = await paymentRepository.getAll();
 
     const headers = ['ID', 'Name', 'Phone', 'Address', 'Total Purchases', 'Total Paid', 'Outstanding Debt', 'Notes'];
     const rows = customers.map(c => {
@@ -133,24 +97,11 @@ export const backupService = {
   },
 
   async resetToDemoData() {
-    await db.transaction('rw', [db.customers, db.products, db.sales, db.sale_items, db.payments, db.settings], async () => {
-      await db.customers.clear();
-      await db.products.clear();
-      await db.sales.clear();
-      await db.sale_items.clear();
-      await db.payments.clear();
-      await db.settings.clear();
-    });
+    await backupRepository.wipeDatabase();
     await initializeDatabase();
   },
 
   async clearAllData() {
-    await db.transaction('rw', [db.customers, db.products, db.sales, db.sale_items, db.payments, db.settings], async () => {
-      await db.customers.clear();
-      await db.products.clear();
-      await db.sales.clear();
-      await db.sale_items.clear();
-      await db.payments.clear();
-    });
+    await backupRepository.wipeDatabase();
   }
 };

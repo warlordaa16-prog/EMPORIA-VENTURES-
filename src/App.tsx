@@ -4,11 +4,17 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Customer, Product, Sale, ShopSettings } from './types';
+import { Customer, Product, Sale, ShopSettings, User } from './types';
 import { initializeDatabase } from './db/database';
 import { DEFAULT_SETTINGS } from './db/seedData';
 import { settingsService } from './services/settingsService';
+import { authService } from './services/authService';
 import { AppLayout } from './layouts/AppLayout';
+
+// Auth & Architecture
+import { LoginPortal } from './components/auth/LoginPortal';
+import { RoleGuard } from './components/auth/RoleGuard';
+import { ArchitectureModal } from './components/architecture/ArchitectureModal';
 
 // Modals
 import { NewSaleModal } from './components/sales/NewSaleModal';
@@ -30,8 +36,10 @@ import { Settings } from './pages/Settings';
 export default function App() {
   const [isDbReady, setIsDbReady] = useState(false);
   const [settings, setSettings] = useState<ShopSettings>(DEFAULT_SETTINGS);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [isArchitectureOpen, setIsArchitectureOpen] = useState(false);
 
   // Modals state
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
@@ -50,13 +58,20 @@ export default function App() {
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [drawerCustomerId, setDrawerCustomerId] = useState<number | null>(null);
 
-  // Initialize DB on mount
+  // Initialize DB and load session on mount
   useEffect(() => {
     async function setup() {
       try {
         await initializeDatabase();
         const loadedSettings = await settingsService.getSettings();
         setSettings(loadedSettings);
+
+        // Check if there is an active session
+        const sessionUser = authService.getSessionUser();
+        if (sessionUser) {
+          setCurrentUser(sessionUser);
+        }
+
         setIsDbReady(true);
       } catch (err) {
         console.error('Failed to initialize database:', err);
@@ -68,6 +83,17 @@ export default function App() {
 
   const triggerRefresh = () => {
     setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleAuthenticated = (user: User) => {
+    setCurrentUser(user);
+    setActiveTab('dashboard');
+    triggerRefresh();
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setCurrentUser(null);
   };
 
   const handleOpenNewSale = (customerId?: number) => {
@@ -105,8 +131,27 @@ export default function App() {
         <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#173B6C] to-[#2F6DB2] text-white flex items-center justify-center font-black text-xl animate-pulse">
           SP
         </div>
-        <p className="text-xs font-semibold text-slate-500">Loading ShopPay Offline Cashbook...</p>
+        <p className="text-xs font-semibold text-slate-500">Initializing ShopPay Offline Architecture...</p>
       </div>
+    );
+  }
+
+  // If not authenticated, display the Login & Registration Portal
+  if (!currentUser) {
+    return (
+      <>
+        <LoginPortal
+          onAuthenticated={handleAuthenticated}
+          settings={settings}
+          onOpenArchitecture={() => setIsArchitectureOpen(true)}
+        />
+        <ArchitectureModal
+          isOpen={isArchitectureOpen}
+          onClose={() => setIsArchitectureOpen(false)}
+          currentUser={currentUser}
+          settings={settings}
+        />
+      </>
     );
   }
 
@@ -115,8 +160,11 @@ export default function App() {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       settings={settings}
+      currentUser={currentUser}
       onOpenNewSale={() => handleOpenNewSale()}
       onOpenRecordPayment={() => handleOpenRecordPayment()}
+      onLogout={handleLogout}
+      onOpenArchitecture={() => setIsArchitectureOpen(true)}
     >
       {/* Tab Switcher */}
       {activeTab === 'dashboard' && (
@@ -161,10 +209,18 @@ export default function App() {
       )}
 
       {activeTab === 'reports' && (
-        <Reports
-          settings={settings}
-          refreshTrigger={refreshTrigger}
-        />
+        <RoleGuard
+          currentUser={currentUser}
+          requiredRole="owner"
+          title="Owner Financial Reports"
+          description="Access to sales summaries, profit breakdowns, and debtor ledgers is restricted to Shop Owners."
+          onElevateToOwner={ownerUser => setCurrentUser(ownerUser)}
+        >
+          <Reports
+            settings={settings}
+            refreshTrigger={refreshTrigger}
+          />
+        </RoleGuard>
       )}
 
       {activeTab === 'products' && (
@@ -176,15 +232,31 @@ export default function App() {
       )}
 
       {activeTab === 'settings' && (
-        <Settings
-          settings={settings}
-          onSettingsUpdated={updated => {
-            setSettings(updated);
-            triggerRefresh();
-          }}
-          refreshTrigger={refreshTrigger}
-        />
+        <RoleGuard
+          currentUser={currentUser}
+          requiredRole="owner"
+          title="Shop Settings & Device Backup"
+          description="Access to business configuration, currency settings, and database backups requires Owner credentials."
+          onElevateToOwner={ownerUser => setCurrentUser(ownerUser)}
+        >
+          <Settings
+            settings={settings}
+            onSettingsUpdated={updated => {
+              setSettings(updated);
+              triggerRefresh();
+            }}
+            refreshTrigger={refreshTrigger}
+          />
+        </RoleGuard>
       )}
+
+      {/* Architecture Inspector Modal */}
+      <ArchitectureModal
+        isOpen={isArchitectureOpen}
+        onClose={() => setIsArchitectureOpen(false)}
+        currentUser={currentUser}
+        settings={settings}
+      />
 
       {/* Global Modals */}
       <NewSaleModal

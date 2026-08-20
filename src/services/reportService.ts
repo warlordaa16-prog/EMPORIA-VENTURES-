@@ -1,4 +1,6 @@
-import { db } from '../db/database';
+import { salesRepository } from '../repositories/salesRepository';
+import { paymentRepository } from '../repositories/paymentRepository';
+import { customerRepository } from '../repositories/customerRepository';
 import { ReportStats } from '../types';
 import { isDateWithinFilter } from '../utils/dates';
 
@@ -8,8 +10,8 @@ export const reportService = {
     customStart?: string,
     customEnd?: string
   ): Promise<ReportStats> {
-    const allSales = await db.sales.toArray();
-    const allPayments = await db.payments.toArray();
+    const allSales = await salesRepository.getAll();
+    const allPayments = await paymentRepository.getAll();
 
     const filteredSales = allSales.filter(s =>
       isDateWithinFilter(s.saleDate, period, customStart, customEnd)
@@ -74,7 +76,7 @@ export const reportService = {
   },
 
   async getTopSellingProducts(limit: number = 5) {
-    const items = await db.sale_items.toArray();
+    const items = await salesRepository.getAllSaleItems();
     const map = new Map<string, { description: string; quantity: number; revenue: number }>();
 
     for (const it of items) {
@@ -94,9 +96,9 @@ export const reportService = {
   },
 
   async getTopDebtors(limit: number = 5) {
-    const customers = await db.customers.toArray();
-    const sales = await db.sales.toArray();
-    const payments = await db.payments.toArray();
+    const customers = await customerRepository.getAll();
+    const sales = await salesRepository.getAll();
+    const payments = await paymentRepository.getAll();
 
     const debtorList = customers.map(cust => {
       const custSales = sales.filter(s => s.customerId === cust.id);

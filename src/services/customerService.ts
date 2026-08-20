@@ -1,48 +1,53 @@
-import { db } from '../db/database';
+import { customerRepository } from '../repositories/customerRepository';
+import { salesRepository } from '../repositories/salesRepository';
+import { paymentRepository } from '../repositories/paymentRepository';
 import { Customer, CustomerSummary } from '../types';
 
 export const customerService = {
   async getAll(): Promise<Customer[]> {
-    return await db.customers.toArray();
+    return await customerRepository.getAll();
   },
 
   async getById(id: number): Promise<Customer | undefined> {
-    return await db.customers.get(id);
+    return await customerRepository.getById(id);
   },
 
   async create(customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Promise<Customer> {
     const now = new Date().toISOString();
-    const newCustomer: Customer = {
+    const newCustomer: Omit<Customer, 'id'> = {
       ...customer,
       name: customer.name.trim(),
       phone: customer.phone.trim(),
       createdAt: now,
       updatedAt: now
     };
-    const id = await db.customers.add(newCustomer);
-    return { ...newCustomer, id: id as number };
+    const id = await customerRepository.create(newCustomer);
+    return { ...newCustomer, id };
   },
 
   async update(id: number, customer: Partial<Customer>): Promise<Customer> {
-    const existing = await db.customers.get(id);
+    const existing = await customerRepository.getById(id);
     if (!existing) throw new Error('Customer not found');
     const updated: Customer = {
       ...existing,
       ...customer,
       updatedAt: new Date().toISOString()
     };
-    await db.customers.put(updated);
+    await customerRepository.update(id, updated);
     return updated;
   },
 
   async delete(id: number): Promise<void> {
-    await db.customers.delete(id);
+    await customerRepository.delete(id);
   },
 
+  /**
+   * Customer Credit Ledger summaries: Total Purchases, Total Paid, Outstanding Credit
+   */
   async getSummaries(): Promise<CustomerSummary[]> {
-    const customers = await db.customers.toArray();
-    const sales = await db.sales.toArray();
-    const payments = await db.payments.toArray();
+    const customers = await customerRepository.getAll();
+    const sales = await salesRepository.getAll();
+    const payments = await paymentRepository.getAll();
 
     return customers.map(cust => {
       const custSales = sales.filter(s => s.customerId === cust.id);
@@ -70,12 +75,18 @@ export const customerService = {
     });
   },
 
+  /**
+   * Comprehensive Customer credit details with sales & payment histories
+   */
   async getCustomerLedger(customerId: number) {
-    const customer = await db.customers.get(customerId);
+    const customer = await customerRepository.getById(customerId);
     if (!customer) return null;
 
-    const sales = await db.sales.where('customerId').equals(customerId).reverse().sortBy('saleDate');
-    const payments = await db.payments.where('customerId').equals(customerId).reverse().sortBy('paymentDate');
+    const allSales = await salesRepository.getByCustomerId(customerId);
+    const sales = allSales.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+
+    const allPayments = await paymentRepository.getByCustomerId(customerId);
+    const payments = allPayments.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
 
     const totalPurchases = sales.reduce((sum, s) => sum + s.total, 0);
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);

@@ -1,16 +1,16 @@
-import { db } from '../db/database';
+import { paymentRepository } from '../repositories/paymentRepository';
+import { salesRepository } from '../repositories/salesRepository';
 import { Payment, PaymentMethod } from '../types';
 import { determinePaymentStatus } from '../utils/calculations';
 
 export const paymentService = {
   async getAll(): Promise<Payment[]> {
-    return await db.payments.reverse().sortBy('paymentDate');
+    return await paymentRepository.getAll();
   },
 
   async generatePaymentId(): Promise<string> {
-    const count = await db.payments.count();
-    const all = await db.payments.toArray();
-    let maxNum = count;
+    const all = await paymentRepository.getAll();
+    let maxNum = all.length;
 
     for (const p of all) {
       if (p.id.startsWith('PM-')) {
@@ -52,56 +52,53 @@ export const paymentService = {
       createdAt: now
     };
 
-    await db.transaction('rw', [db.payments, db.sales], async () => {
-      await db.payments.add(payment);
+    await paymentRepository.create(payment);
 
-      // If tied to a specific sale:
-      if (data.saleId) {
-        const sale = await db.sales.get(data.saleId);
-        if (sale) {
-          const newPaid = Math.min(sale.total, sale.amountPaid + amount);
-          const newBalance = Math.max(0, sale.total - newPaid);
-          const newStatus = determinePaymentStatus(sale.total, newPaid);
+    // If linked to a specific sale:
+    if (data.saleId) {
+      const sale = await salesRepository.getById(data.saleId);
+      if (sale) {
+        const newPaid = Math.min(sale.total, sale.amountPaid + amount);
+        const newBalance = Math.max(0, sale.total - newPaid);
+        const newStatus = determinePaymentStatus(sale.total, newPaid);
 
-          await db.sales.update(data.saleId, {
-            amountPaid: newPaid,
-            balance: newBalance,
-            status: newStatus,
-            updatedAt: now
-          });
-        }
-      } else if (data.customerId) {
-        // Customer debt reduction: allocate across unpaid sales in chronological order
-        let remainingAmountToApply = amount;
-        const unpaidSales = await db.sales
-          .where('customerId')
-          .equals(data.customerId)
-          .filter(s => s.balance > 0)
-          .sortBy('saleDate');
-
-        for (const s of unpaidSales) {
-          if (remainingAmountToApply <= 0) break;
-          const allocation = Math.min(remainingAmountToApply, s.balance);
-          const newPaid = s.amountPaid + allocation;
-          const newBalance = s.total - newPaid;
-          const newStatus = determinePaymentStatus(s.total, newPaid);
-
-          await db.sales.update(s.id, {
-            amountPaid: newPaid,
-            balance: newBalance,
-            status: newStatus,
-            updatedAt: now
-          });
-
-          remainingAmountToApply -= allocation;
-        }
+        await salesRepository.update(data.saleId, {
+          amountPaid: newPaid,
+          balance: newBalance,
+          status: newStatus,
+          updatedAt: now
+        });
       }
-    });
+    } else if (data.customerId) {
+      // Customer debt reduction: allocate across unpaid sales in chronological order
+      let remainingAmountToApply = amount;
+      const allSales = await salesRepository.getByCustomerId(data.customerId);
+      const unpaidSales = allSales
+        .filter(s => s.balance > 0)
+        .sort((a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime());
+
+      for (const s of unpaidSales) {
+        if (remainingAmountToApply <= 0) break;
+        const allocation = Math.min(remainingAmountToApply, s.balance);
+        const newPaid = s.amountPaid + allocation;
+        const newBalance = s.total - newPaid;
+        const newStatus = determinePaymentStatus(s.total, newPaid);
+
+        await salesRepository.update(s.id, {
+          amountPaid: newPaid,
+          balance: newBalance,
+          status: newStatus,
+          updatedAt: now
+        });
+
+        remainingAmountToApply -= allocation;
+      }
+    }
 
     return payment;
   },
 
   async deletePayment(id: string): Promise<void> {
-    await db.payments.delete(id);
+    await paymentRepository.delete(id);
   }
 };
