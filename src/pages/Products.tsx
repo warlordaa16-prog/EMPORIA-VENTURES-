@@ -123,15 +123,15 @@ export const Products: React.FC<ProductsProps> = ({
           </p>
         </div>
 
-        {isManager && (
+        <div className="flex items-center gap-2">
           <button
             id="add-product-btn"
             onClick={() => onOpenProductModal()}
-            className="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-[#173B6C] to-[#2F6DB2] hover:opacity-95 rounded-xl shadow-sm shadow-[#173B6C]/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+            className="px-4 py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-[#173B6C] to-[#2F6DB2] hover:opacity-95 rounded-xl shadow-sm shadow-[#173B6C]/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" /> + Add Product Item
+            <Plus className="w-4 h-4 stroke-[2.5]" /> + Add Product
           </button>
-        )}
+        </div>
       </div>
 
       {/* Stock Health Quick Overview Tabs (Shown to Manager/Admin/Owner) */}
@@ -232,8 +232,26 @@ export const Products: React.FC<ProductsProps> = ({
       {/* Product Items Bento Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredProducts.length === 0 ? (
-          <div className="col-span-full bg-white p-14 text-center rounded-3xl border border-slate-200/80 text-slate-400 text-xs">
-            No products match the selected criteria.
+          <div className="col-span-full bg-white p-12 text-center rounded-3xl border border-slate-200/80 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center mx-auto">
+              <ShoppingBag className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-slate-800">No Products in Catalog</h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                {searchQuery || selectedCategory !== 'ALL' || stockFilter !== 'ALL'
+                  ? 'No products match your current search or filter criteria.'
+                  : 'Start adding merchandise and products with custom prices and stock tracking.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenProductModal()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#173B6C] hover:bg-[#1E4D8C] text-white text-xs font-bold rounded-xl shadow-2xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>+ Add Product Item</span>
+            </button>
           </div>
         ) : (
           filteredProducts.map(prod => {
@@ -246,9 +264,9 @@ export const Products: React.FC<ProductsProps> = ({
               <div
                 key={prod.id}
                 className={`bg-white rounded-3xl border p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-all space-y-3 relative group flex flex-col justify-between ${
-                  isManager && isOutOfStock
+                  isOutOfStock
                     ? 'border-rose-300 bg-gradient-to-b from-rose-50/20 to-white'
-                    : isManager && isLowStock
+                    : isLowStock
                     ? 'border-amber-300 bg-gradient-to-b from-amber-50/20 to-white'
                     : 'border-slate-200/80'
                 }`}
@@ -266,26 +284,24 @@ export const Products: React.FC<ProductsProps> = ({
                       )}
                     </div>
 
-                    {isManager && (
-                      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onOpenProductModal(prod)}
+                        className="p-1.5 text-slate-400 hover:text-[#173B6C] hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
+                        title="Edit Item & Pricing"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      {prod.id && (
                         <button
-                          onClick={() => onOpenProductModal(prod)}
-                          className="p-1.5 text-slate-400 hover:text-[#173B6C] hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit Item & Threshold"
+                          onClick={() => handleDelete(prod.id!, prod.name)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Remove / Delete Product"
                         >
-                          <Edit3 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                        {prod.id && (
-                          <button
-                            onClick={() => handleDelete(prod.id!, prod.name)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="Delete Item"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   <div>

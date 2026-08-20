@@ -51,6 +51,14 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // Quick inline product creation during sale
+  const [quickProductIndex, setQuickProductIndex] = useState<number | null>(null);
+  const [quickProdName, setQuickProdName] = useState('');
+  const [quickProdPrice, setQuickProdPrice] = useState<number>(0);
+  const [quickProdUnit, setQuickProdUnit] = useState('packet');
+  const [quickProdStock, setQuickProdStock] = useState<number>(20);
+  const [isSavingQuickProd, setIsSavingQuickProd] = useState(false);
+
   // Load customers and products on open
   useEffect(() => {
     if (isOpen) {
@@ -106,6 +114,15 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   };
 
   const handleProductSelect = (index: number, productIdStr: string) => {
+    if (productIdStr === '__NEW_PRODUCT__') {
+      setQuickProductIndex(index);
+      setQuickProdName(items[index]?.description || '');
+      setQuickProdPrice(items[index]?.unitPrice || 0);
+      setQuickProdUnit('packet');
+      setQuickProdStock(20);
+      return;
+    }
+
     if (!productIdStr) {
       const updated = [...items];
       updated[index] = { ...updated[index], productId: undefined, description: '', unitPrice: 0 };
@@ -124,6 +141,44 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
         unitPrice: prod.defaultPrice
       };
       setItems(updated);
+    }
+  };
+
+  const handleSaveQuickProduct = async () => {
+    if (!quickProdName.trim()) {
+      alert('Please enter product name.');
+      return;
+    }
+    if (quickProductIndex === null) return;
+
+    setIsSavingQuickProd(true);
+    try {
+      const created = await productService.create({
+        name: quickProdName.trim(),
+        unit: quickProdUnit.trim(),
+        defaultPrice: quickProdPrice,
+        category: 'Groceries',
+        stockQuantity: quickProdStock,
+        lowStockThreshold: 5,
+        trackStock: true
+      });
+
+      const updatedProds = await productService.getAll();
+      setProducts(updatedProds);
+
+      const updated = [...items];
+      updated[quickProductIndex] = {
+        ...updated[quickProductIndex],
+        productId: created.id,
+        description: created.name,
+        unitPrice: created.defaultPrice
+      };
+      setItems(updated);
+      setQuickProductIndex(null);
+    } catch (err: any) {
+      alert('Error creating product: ' + err.message);
+    } finally {
+      setIsSavingQuickProd(false);
     }
   };
 
@@ -371,6 +426,81 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
             </span>
           </div>
 
+          {/* Quick Product Creation Panel */}
+          {quickProductIndex !== null && (
+            <div className="p-3.5 bg-sky-50 border border-sky-200 rounded-xl space-y-3 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-[#173B6C] flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Quick Add Product to Shop Catalog
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setQuickProductIndex(null)}
+                  className="text-xs text-slate-500 hover:text-slate-700 font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-700 mb-0.5">Product Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Premium Rice 5kg"
+                    value={quickProdName}
+                    onChange={e => setQuickProdName(e.target.value)}
+                    className="w-full text-xs rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-slate-800 shadow-2xs font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 mb-0.5">Selling Price ({currency}) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    placeholder="0"
+                    value={quickProdPrice || ''}
+                    onChange={e => setQuickProdPrice(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-full text-xs rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-slate-800 shadow-2xs font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 mb-0.5">Unit (e.g. bag, kg)</label>
+                  <input
+                    type="text"
+                    placeholder="packet / bag"
+                    value={quickProdUnit}
+                    onChange={e => setQuickProdUnit(e.target.value)}
+                    className="w-full text-xs rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-slate-800 shadow-2xs font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] font-bold text-slate-700">Initial Stock:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={quickProdStock || ''}
+                    onChange={e => setQuickProdStock(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-20 text-xs rounded-lg border-slate-300 bg-white px-2 py-1 text-slate-800 text-center font-medium"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={isSavingQuickProd}
+                  onClick={handleSaveQuickProduct}
+                  className="px-3.5 py-1.5 bg-[#173B6C] hover:bg-[#1E4D8C] text-white text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer"
+                >
+                  {isSavingQuickProd ? 'Adding...' : 'Save & Insert Item'}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {items.map((item, index) => {
               const lineSubtotal = calculateSubtotal(item.quantity, item.unitPrice);
@@ -385,7 +515,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                       <select
                         value={item.productId || ''}
                         onChange={e => handleProductSelect(index, e.target.value)}
-                        className="w-full text-xs rounded-md border-slate-300 bg-white px-2 py-1 text-slate-700 shadow-2xs mb-1"
+                        className="w-full text-xs rounded-md border-slate-300 bg-white px-2 py-1 text-slate-700 shadow-2xs mb-1 font-medium"
                       >
                         <option value="">-- Quick select product --</option>
                         {products.map(p => {
@@ -397,6 +527,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                             </option>
                           );
                         })}
+                        <option value="__NEW_PRODUCT__" className="font-bold text-[#173B6C]">
+                          + Add New Product to Catalog...
+                        </option>
                       </select>
                     )}
                     <input

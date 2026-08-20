@@ -327,6 +327,7 @@ export default function App() {
         }}
         productToEdit={productToEdit}
         onSaved={() => triggerRefresh()}
+        onDeleted={() => triggerRefresh()}
         currency={settings.currency}
       />
     </AppLayout>
